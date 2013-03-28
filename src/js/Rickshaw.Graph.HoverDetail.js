@@ -58,9 +58,16 @@ Rickshaw.Graph.HoverDetail = Rickshaw.Class.create({
 
 			var domainX = graph.x.invert(eventX);
 
-			var domainIndexScale = d3.scale.linear()
-				.domain([data[0].x, data.slice(-1)[0].x])
-				.range([0, data.length - 1]);
+			var domainIndexScale;
+			if (data[0]) {
+				domainIndexScale = d3.scale.linear()
+						.domain([data[0].x, data.slice(-1)[0].x])
+						.range([0, data.length - 1]);
+			} else {
+				domainIndexScale = d3.scale.linear()
+						.domain([0, 1])
+						.range([0, 0]);
+			}
 
 			var approximateIndex = Math.round(domainIndexScale(domainX));
 			var dataIndex = Math.min(approximateIndex || 0, data.length - 1);
@@ -79,18 +86,34 @@ Rickshaw.Graph.HoverDetail = Rickshaw.Class.create({
 
 			if (dataIndex < 0) dataIndex = 0;
 			var value = data[dataIndex];
+			var distance;
+			if (dataIndex === 0 && !value) {
+				distance = 0;
+			} else {
+				if(value) {
+					distance = Math.sqrt(
+						Math.pow(Math.abs(graph.x(value.x) - eventX), 2) +
+						Math.pow(Math.abs(graph.y(value.y + value.y0) - eventY), 2)
+					);
+				} else {
+					distance = 0;
+				}
+			}
 
-			var distance = Math.sqrt(
-				Math.pow(Math.abs(graph.x(value.x) - eventX), 2) +
-				Math.pow(Math.abs(graph.y(value.y + value.y0) - eventY), 2)
-			);
+
 
 			var xFormatter = series.xFormatter || this.xFormatter;
 			var yFormatter = series.yFormatter || this.yFormatter;
 
+			var xVal = 0;
+			var yVal = 0;
+			if (value) {
+				xVal = value.x;
+				yVal = value.y;
+			}
 			var point = {
-				formattedXValue: xFormatter(value.x),
-				formattedYValue: yFormatter(value.y),
+				formattedXValue: xFormatter(xVal),
+				formattedYValue: yFormatter(yVal),
 				series: series,
 				value: value,
 				distance: distance,
@@ -109,7 +132,11 @@ Rickshaw.Graph.HoverDetail = Rickshaw.Class.create({
 
 		nearestPoint.active = true;
 
-		var domainX = nearestPoint.value.x;
+		nearestX = 0;
+		if(nearestPoint.value){
+			nearestX = nearestPoint.value.x;
+		}
+		var domainX = nearestX;
 		var formattedXValue = nearestPoint.formattedXValue;
 
 		this.element.innerHTML = '';
@@ -149,7 +176,7 @@ Rickshaw.Graph.HoverDetail = Rickshaw.Class.create({
 		var points = args.points;
 		var point = points.filter( function(p) { return p.active } ).shift();
 
-		if (point.value.y === null) return;
+		if (!point.value || point.value.y === null) return;
 
 		var formattedXValue = this.xFormatter(point.value.x);
 		var formattedYValue = this.yFormatter(point.value.y);
